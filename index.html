@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="theme-color" content="#c8102e">
+  <meta name="description" content="Official FK Red Star Belgrade match calendar with live stats, notifications & PWA support">
+  
+  <link rel="icon" type="image/png" href="logo.png">
+  <link rel="apple-touch-icon" href="logo.png">
+  <link rel="manifest" href="manifest.json">
+  
+  <title>FK Crvena Zvezda - Match Calendar</title>
+  
+  <style>
+    /* [CSS REMAINS EXACTLY THE SAME AS PREVIOUS VERSION] */
+    :root {
+      --red-star-red: #c8102e;
+      --red-star-white: #ffffff;
+      --bg-primary: #1a1a2e;
+      --bg-secondary: #16213e;
+      --bg-card: #1e2a4a;
+      --text-primary: #f1f1f1;
+      --text-secondary: #b0b0b0;
+      --accent-gold: #ffd700;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --border-radius: 16px;
+      --shadow: 0 8px 32px rgba(0,0,0,0.3);
+      --transition: all 0.3s ease;
+      --calendar-cell-min-height: 100px;
+    }
+    [data-theme="light"] {
+      --bg-primary: #f8fafc; --bg-secondary: #e2e8f0; --bg-card: #ffffff;
+      --text-primary: #1e293b; --text-secondary: #64748b;
+      --shadow: 0 8px 32px rgba(0,0,0,0.1);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg-primary); color: var(--text-primary); line-height: 1.6; min-height: 100vh; padding: 16px; transition: var(--transition); }
+    .container { max-width: 1200px; margin: 0 auto; }
+    header { display: flex; justify-content: space-between; align-items: center; padding: 20px; background: var(--bg-secondary); border-radius: var(--border-radius); margin-bottom: 20px; border: 2px solid var(--red-star-red); box-shadow: var(--shadow); flex-wrap: wrap; gap: 15px; }
+    .logo { display: flex; align-items: center; gap: 15px; }
+    .logo-icon { width: 56px; height: 56px; background: var(--red-star-red); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; color: white; border: 3px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+    .logo-text h1 { font-size: 1.5rem; font-weight: 700; }
+    .logo-text h1 span { color: var(--red-star-red); }
+    .logo-text p { color: var(--text-secondary); font-size: 0.9rem; }
+    .controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .btn { padding: 10px 16px; border: none; border-radius: 10px; background: var(--bg-card); color: var(--text-primary); cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 0.9rem; transition: var(--transition); border: 1px solid rgba(255,255,255,0.1); }
+    .btn:hover { background: var(--red-star-red); transform: translateY(-2px); }
+    .btn.active { background: var(--red-star-red); border-color: var(--red-star-red); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+    .stat-card { background: var(--bg-card); padding: 20px; border-radius: 12px; text-align: center; border-left: 4px solid var(--red-star-red); box-shadow: var(--shadow); transition: var(--transition); }
+    .stat-card:hover { transform: translateY(-3px); }
+    .stat-value { font-size: 1.8rem; font-weight: 700; color: var(--red-star-red); }
+    .stat-label { color: var(--text-secondary); font-size: 0.9rem; margin-top: 4px; }
+    .stat-sub { font-size: 0.8rem; color: var(--text-secondary); margin-top: 2px; }
+    .league-badge { display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, var(--red-star-red), #991f2e); color: white; padding: 6px 14px; border-radius: 20px; font-weight: 600; font-size: 0.9rem; margin-top: 8px; }
+    .scorers-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin: 20px 0; }
+    .scorer-card { background: var(--bg-card); padding: 16px; border-radius: 12px; display: flex; align-items: center; gap: 12px; border-left: 3px solid var(--accent-gold); }
+    .scorer-avatar { width: 48px; height: 48px; border-radius: 50%; background: var(--red-star-red); display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; flex-shrink: 0; }
+    .scorer-info h4 { font-size: 1rem; margin-bottom: 2px; }
+    .scorer-info p { color: var(--text-secondary); font-size: 0.85rem; }
+    .scorer-goals { margin-left: auto; font-weight: 700; color: var(--red-star-red); font-size: 1.2rem; }
+    .calendar-nav { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: var(--bg-card); border-radius: var(--border-radius); margin-bottom: 15px; box-shadow: var(--shadow); }
+    .calendar-title { font-size: 1.3rem; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+    .calendar-title select { background: var(--bg-secondary); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.2); padding: 6px 12px; border-radius: 8px; font-size: 0.9rem; cursor: pointer; }
+    .nav-buttons { display: flex; gap: 8px; }
+    .calendar-wrapper { background: var(--bg-card); border-radius: var(--border-radius); padding: 20px; box-shadow: var(--shadow); margin-bottom: 20px; overflow-x: auto; }
+    .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+    .calendar-header-day { text-align: center; padding: 12px 8px; font-weight: 600; color: var(--red-star-red); font-size: 0.9rem; text-transform: uppercase; }
+    .calendar-day { min-height: var(--calendar-cell-min-height); padding: 8px; border-radius: 10px; background: var(--bg-secondary); position: relative; transition: var(--transition); border: 1px solid transparent; }
+    .calendar-day:hover { border-color: var(--red-star-red); background: rgba(200, 16, 46, 0.1); }
+    .calendar-day.other-month { opacity: 0.4; }
+    .calendar-day.today { border: 2px solid var(--accent-gold); background: rgba(255, 215, 0, 0.1); }
+    .day-number { font-weight: 600; font-size: 0.9rem; margin-bottom: 6px; display: block; }
+    .event-dot { display: block; width: 8px; height: 8px; border-radius: 50%; background: var(--red-star-red); margin: 2px auto; }
+    .event-count { font-size: 0.75rem; color: var(--text-secondary); text-align: center; }
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; visibility: hidden; transition: var(--transition); padding: 20px; }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    .modal { background: var(--bg-card); border-radius: 16px; width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow); border: 2px solid var(--red-star-red); animation: modalSlide 0.3s ease; }
+    @keyframes modalSlide { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .modal-header { padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: start; }
+    .modal-title { font-size: 1.3rem; font-weight: 700; color: var(--red-star-red); }
+    .modal-close { background: none; border: none; color: var(--text-secondary); font-size: 1.5rem; cursor: pointer; padding: 4px; line-height: 1; }
+    .modal-close:hover { color: var(--red-star-red); }
+    .modal-body { padding: 20px; }
+    .event-detail { margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    .event-detail:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .event-detail-label { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .event-detail-value { font-size: 1.1rem; font-weight: 500; }
+    .event-competition { display: inline-block; padding: 4px 12px; background: var(--red-star-red); color: white; border-radius: 20px; font-size: 0.85rem; font-weight: 600; margin-bottom: 12px; }
+    .event-actions { display: flex; gap: 10px; margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); }
+    .btn-add-calendar { flex: 1; background: var(--success); color: white; }
+    .btn-add-calendar:hover { background: #16a34a; }
+    .event-list { display: none; flex-direction: column; gap: 12px; margin-top: 15px; }
+    .event-list-item { background: var(--bg-secondary); padding: 14px; border-radius: 12px; border-left: 3px solid var(--red-star-red); cursor: pointer; transition: var(--transition); }
+    .event-list-item:hover { transform: translateX(4px); background: rgba(200, 16, 46, 0.15); }
+    .event-list-date { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 4px; }
+    .event-list-title { font-weight: 600; margin-bottom: 4px; }
+    .event-list-competition { font-size: 0.8rem; color: var(--red-star-red); font-weight: 500; }
+    .calendar-loading, .calendar-empty { text-align: center; padding: 40px 20px; color: var(--text-secondary); }
+    .calendar-empty-icon { font-size: 3rem; margin-bottom: 12px; opacity: 0.6; }
+    .toast { position: fixed; bottom: 20px; right: 20px; background: var(--bg-card); padding: 14px 20px; border-radius: 12px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 10px; z-index: 1000; transform: translateX(150%); transition: transform 0.3s ease; border-left: 4px solid var(--success); max-width: 350px; }
+    .toast.show { transform: translateX(0); }
+    .toast.warning { border-left-color: var(--warning); }
+    .toast.error { border-left-color: var(--danger); }
+    .install-banner { background: linear-gradient(135deg, var(--red-star-red), #991f2e); color: white; padding: 12px 20px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; display: none; }
+    .install-banner.show { display: flex; }
+    .install-btn { background: white; color: var(--red-star-red); border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; }
+    footer { text-align: center; padding: 25px 20px; color: var(--text-secondary); font-size: 0.9rem; }
+    footer a { color: var(--red-star-red); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+    @media (max-width: 768px) { header { flex-direction: column; text-align: center; } .controls { justify-content: center; } .calendar-grid { gap: 4px; } .calendar-day { min-height: 80px; padding: 4px; } .day-number { font-size: 0.8rem; } .modal { margin: 10px; } .calendar-grid { display: none; } .event-list { display: flex; } }
+    @media (max-width: 480px) { .calendar-day { min-height: 70px; } .logo-icon { width: 48px; height: 48px; font-size: 20px; } .logo-text h1 { font-size: 1.3rem; } .stat-value { font-size: 1.5rem; } }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .animate-in { animation: fadeIn 0.4s ease forwards; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+    .loading-dots span { display: inline-block; animation: pulse 1.4s infinite; margin: 0 2px; }
+    .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="install-banner" id="installBanner">
+      <span>📱 <span data-i18n="installPrompt">Install app for offline access & notifications!</span></span>
+      <button class="install-btn" id="installBtn" data-i18n="install">Install</button>
+    </div>
+
+    <header>
+      <div class="logo">
+      <div class="logo-icon">
+      <img src="logo.png" alt="FK Crvena Zvezda" style="width: 100%; height: 100%; object-fit: contain; border-radius: 50%;">
+      </div>
+        <div class="logo-text">
+          <h1>FK <span data-i18n="clubName">Red Star Belgrade</span></h1>
+          <p data-i18n="subtitle">Official Match Calendar • Crvena Zvezda</p>
+        </div>
+      </div>
+      <div class="controls">
+        <button class="btn" id="themeToggle"><span class="theme-icon">🌙</span><span data-i18n="theme">Theme</span></button>
+        <button class="btn" id="langToggle"><span class="lang-icon">🗣️</span><span id="currentLang">EN</span></button>
+        <button class="btn" id="notifyToggle"><span class="notify-icon">🔔</span><span data-i18n="notify">Alerts</span></button>
+        <button class="btn" id="refreshBtn"><span>🔄</span><span data-i18n="refresh">Refresh</span></button>
+      </div>
+    </header>
+
+    <div class="stats-grid">
+      <div class="stat-card animate-in" style="animation-delay: 0.1s"><div class="stat-value">1st</div><div class="stat-label" data-i18n="leaguePosition">League Position</div><div class="stat-sub">Serbian SuperLiga</div><div class="league-badge">🏆 <span data-i18n="champions">Champions</span></div></div>
+      <div class="stat-card animate-in" style="animation-delay: 0.2s"><div class="stat-value">25-3-3</div><div class="stat-label" data-i18n="record">Season Record</div><div class="stat-sub" data-i18n="points">78 pts (2.52/game)</div></div>
+      <div class="stat-card animate-in" style="animation-delay: 0.3s"><div class="stat-value">91:24</div><div class="stat-label" data-i18n="goals">Goals For/Against</div><div class="stat-sub" data-i18n="avgGoals">2.94 scored / 0.77 conceded</div></div>
+      <div class="stat-card animate-in" style="animation-delay: 0.4s"><div class="stat-value">🔥</div><div class="stat-label" data-i18n="form">Current Form</div><div class="stat-sub" style="color: var(--success);">✓ ✓ ✓ ✓ ✓</div></div>
+    </div>
+
+    <div class="calendar-wrapper">
+      <div style="padding: 0 10px; margin-bottom: 15px;"><strong>⚽ <span data-i18n="topScorers">Top Scorers 2025/26</span></strong><small style="color: var(--text-secondary); margin-left: 8px">Serbian SuperLiga</small></div>
+      <div class="scorers-list">
+  <div class="scorer-card">
+    <div class="scorer-avatar">AK</div>
+    <div class="scorer-info">
+      <h4>A. Katai</h4>
+      <p data-i18n="posForwardMidfielder">For/Mid</p>
+    </div>
+    <div class="scorer-goals">23 ⚽</div>
+  </div>
+  <div class="scorer-card">
+    <div class="scorer-avatar">MI</div>
+    <div class="scorer-info">
+      <h4>M. Ivanić</h4>
+      <p data-i18n="posMidfielder">Midfielder</p>
+    </div>
+    <div class="scorer-goals">12 ⚽</div>
+  </div>
+  <div class="scorer-card">
+    <div class="scorer-avatar">VK</div>
+    <div class="scorer-info">
+      <h4>V. Kostov</h4>
+      <p data-i18n="posMidfielder">Midfielder</p>
+    </div>
+    <div class="scorer-goals">11 ⚽</div>
+  </div>
+  <div class="scorer-card">
+    <div class="scorer-avatar">MA</div>
+    <div class="scorer-info">
+      <h4>M. Arnautović</h4>
+      <p data-i18n="posForward">Forward</p>
+    </div>
+    <div class="scorer-goals">5 ⚽</div>
+  </div>
+</div>
+
+    <div class="calendar-wrapper">
+      <div class="calendar-nav">
+        <div class="calendar-title"><span>🗓️</span><select id="monthSelect"></select><select id="yearSelect"></select></div>
+        <div class="nav-buttons"><button class="btn" id="prevMonth">◀</button><button class="btn" id="todayBtn" data-i18n="today">Today</button><button class="btn" id="nextMonth">▶</button></div>
+      </div>
+      <div class="calendar-grid" id="calendarGrid"></div>
+      <div class="event-list" id="eventList"></div>
+      <div class="calendar-loading" id="calendarLoading" style="display: none;"><div style="font-size: 2rem; margin-bottom: 15px;">🔄</div><p data-i18n="loadingCalendar">Loading matches...</p><div class="loading-dots"><span>•</span><span>•</span><span>•</span></div></div>
+      <div class="calendar-empty" id="calendarEmpty" style="display: none;"><div class="calendar-empty-icon">📅</div><p data-i18n="noMatches">No matches found for this period</p><p style="margin-top: 8px; font-size: 0.9rem;" data-i18n="tryRefresh">Try refreshing or selecting a different month</p></div>
+    </div>
+
+    <div class="modal-overlay" id="eventModal">
+      <div class="modal">
+        <div class="modal-header"><div><span class="event-competition" id="modalCompetition">SuperLiga</span><h3 class="modal-title" id="modalTitle">Match Title</h3></div><button class="modal-close" id="modalClose">&times;</button></div>
+        <div class="modal-body">
+          <div class="event-detail"><div class="event-detail-label" data-i18n="dateTime">Date & Time</div><div class="event-detail-value" id="modalDateTime">-</div></div>
+          <div class="event-detail"><div class="event-detail-label" data-i18n="opponent">Opponent</div><div class="event-detail-value" id="modalOpponent">-</div></div>
+          <div class="event-detail"><div class="event-detail-label" data-i18n="venue">Venue</div><div class="event-detail-value" id="modalVenue">-</div></div>
+          <div class="event-detail"><div class="event-detail-label" data-i18n="competition">Competition</div><div class="event-detail-value" id="modalCompetitionFull">-</div></div>
+          <div class="event-detail" id="modalDescriptionContainer" style="display: none;"><div class="event-detail-label" data-i18n="description">Description</div><div class="event-detail-value" id="modalDescription">-</div></div>
+          <div class="event-actions"><button class="btn btn-add-calendar" id="addToCalendarBtn">📅 <span data-i18n="addToCalendar">Add to My Calendar</span></button><button class="btn" id="shareEventBtn">🔗 <span data-i18n="share">Share</span></button></div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <p>🔴⚪ <em data-i18n="motto">Navijači, zajedno do titule!</em> ⚪🔴</p>
+      <p style="margin-top: 8px"><span data-i18n="footerText">Data source: Google Calendar • </span><a href="https://www.crvenazvezdafk.com" target="_blank" rel="noopener">crvenazvezdafk.com</a></p>
+      <p style="margin-top: 12px; font-size: 0.85rem">💡 <span data-i18n="tip">Tip: Click any date to view matches. Press "C" to focus calendar.</span></p>
+    </footer>
+  </div>
+
+  <div class="toast" id="toast"><span id="toastIcon">✅</span><span id="toastMessage">Notification enabled!</span></div>
+
+  <script>
+    // ==================== CONFIG ====================
+    const CALENDAR_ID = 'f16159503be59ae3085d5ea22f1e8e11f39085eef8e15d077090ca1c43ea7597@group.calendar.google.com';
+    const ICAL_URL = `https://calendar.google.com/calendar/ical/${encodeURIComponent(CALENDAR_ID)}/public/basic.ics`;
+    const CORS_PROXIES = [
+      ICAL_URL,
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(ICAL_URL)}`,
+      `https://corsproxy.io/?${encodeURIComponent(ICAL_URL)}`,
+      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(ICAL_URL)}`
+    ];
+    const TIMEZONE = 'Europe/Belgrade';
+
+        // ==================== TRANSLATIONS ====================
+    const translations = {
+      en: {
+        clubName: "Red Star Belgrade",
+        subtitle: "Official Match Calendar • Crvena Zvezda",
+        theme: "Theme",
+        notify: "Alerts",
+        install: "Install",
+        refresh: "Refresh",
+        installPrompt: "Install app for offline access & notifications!",
+        leaguePosition: "League Position",
+        champions: "Champions",
+        record: "Season Record",
+        points: "78 pts (2.52/game)",
+        goals: "Goals For/Against",
+        avgGoals: "2.94 scored / 0.77 conceded",
+        form: "Current Form",
+        topScorers: "Top Scorers 2025/26",
+        position: "Position",
+        today: "Today",
+        loadingCalendar: "Loading matches...",
+        noMatches: "No matches found",
+        tryRefresh: "Try refreshing or selecting a different month",
+        dateTime: "Date & Time",
+        opponent: "Opponent",
+        venue: "Venue",
+        posForward: "Forward",
+        posMidfielder: "Midfielder",
+        posForwardMidfielder: "For/Mid",
+        posDefender: "Defender",
+        posGoalkeeper: "Goalkeeper",
+        competition: "Competition",
+        description: "Description",
+        addToCalendar: "Add to My Calendar",
+        share: "Share",
+        motto: "Navijači, zajedno do titule!",
+        footerText: "Data source: Google Calendar • ",
+        tip: "Tip: Click any date to view matches.",
+        notifyEnabled: "✅ Match alerts enabled!",
+        notifyDisabled: "🔕 Alerts disabled",
+        notifyBlocked: "⚠️ Notifications blocked in browser",
+        installed: "📱 App installed!",
+        lightMode: "☀️ Light mode",
+        darkMode: "🌙 Dark mode",
+        sun: "Sun", mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat",
+        jan: "Jan", feb: "Feb", mar: "Mar", apr: "Apr", may: "May", jun: "Jun",
+        jul: "Jul", aug: "Aug", sep: "Sep", oct: "Oct", nov: "Nov", dec: "Dec",
+        vs: "vs", at: "at", home: "Home", away: "Away"
+      },
+      sr: {
+        clubName: "Crvena Zvezda",
+        subtitle: "Zvanični kalendar utakmica • FK Crvena Zvezda",
+        theme: "Tema",
+        notify: "Obaveštenja",
+        install: "Instaliraj",
+        refresh: "Osveži",
+        installPrompt: "Instaliraj aplikaciju za offline pristup!",
+        leaguePosition: "Pozicija u ligi",
+        champions: "Šampioni",
+        record: "Rekord sezone",
+        points: "78 bodova",
+        goals: "Golovi Za/Protiv",
+        avgGoals: "2.94 postignuto / 0.77 primljeno",
+        form: "Trenutna forma",
+        topScorers: "Najbolji strelci 2025/26",
+        position: "Pozicija",
+        today: "Danas",
+        loadingCalendar: "Učitavanje utakmica...",
+        noMatches: "Nema utakmica za ovaj period",
+        tryRefresh: "Pokušaj osvežiti ili izaberi drugi mesec",
+        dateTime: "Datum i vreme",
+        opponent: "Protivnik",
+        venue: "Stadion",
+        posForward: "Napadač",
+        posMidfielder: "Vezni igrač",
+        posForwardMidfielder: "Nap/Vez",
+        posDefender: "Odbrambeni",
+        posGoalkeeper: "Golman",
+        competition: "Takmičenje",
+        description: "Opis",
+        addToCalendar: "Dodaj u kalendar",
+        share: "Podeli",
+        motto: "Navijači, zajedno do titule!",
+        footerText: "Izvor: Google Calendar • ",
+        tip: "Savet: Klikni na datum za detalje.",
+        notifyEnabled: "✅ Obaveštenja uključena!",
+        notifyDisabled: "🔕 Obaveštenja isključena",
+        notifyBlocked: "⚠️ Obaveštenja blokirana",
+        installed: "📱 Aplikacija instalirana!",
+        lightMode: "☀️ Svetla tema",
+        darkMode: "🌙 Tamna tema",
+        sun: "Ned", mon: "Pon", tue: "Uto", wed: "Sre", thu: "Čet", fri: "Pet", sat: "Sub",
+        jan: "Jan", feb: "Feb", mar: "Mar", apr: "Apr", may: "Maj", jun: "Jun",
+        jul: "Jul", aug: "Avg", sep: "Sep", oct: "Okt", nov: "Nov", dec: "Dec",
+        vs: "protiv", at: "gostujuća", home: "Domaćin", away: "Gost"
+      }
+    };
+
+    // ==================== STATE ====================
+    let currentLang = localStorage.getItem('rsb_lang') || 'en';
+    let currentTheme = localStorage.getItem('rsb_theme') || 'dark';
+    let notificationsEnabled = localStorage.getItem('rsb_notify') === 'true';
+    let deferredPrompt = null;
+    let calendarEvents = [];
+    let currentMonth = new Date().getMonth();
+    let currentYear = new Date().getFullYear();
+    let selectedEvent = null;
+
+    // ==================== INIT ====================
+    document.addEventListener('DOMContentLoaded', async () => {
+      applyTheme(currentTheme);
+      applyLanguage(currentLang);
+      setupEventListeners();
+      registerServiceWorker();
+      checkInstallability();
+      populateMonthYearSelectors();
+      
+      console.log('🔄 Loading calendar data...');
+      await loadCalendarEvents();
+      
+      document.addEventListener('keydown', (e) => {
+        if (e.key.toLowerCase() === 'c' && !e.target.matches('input, textarea, select')) {
+          document.querySelector('.calendar-wrapper')?.scrollIntoView({ behavior: 'smooth' });
+          showToast(translations[currentLang].tip, 'info');
+        }
+      });
+    });
+
+    // ==================== THEME & LANGUAGE ====================
+    function applyTheme(theme) {
+      currentTheme = theme; // 👈 FIXED: Update global state variable
+      document.documentElement.setAttribute('data-theme', theme);
+      document.querySelector('meta[name="theme-color"]').setAttribute('content', theme === 'dark' ? '#c8102e' : '#ffffff');
+      document.querySelector('.theme-icon').textContent = theme === 'dark' ? '🌙' : '☀️';
+      localStorage.setItem('rsb_theme', theme);
+    }
+    function applyLanguage(lang) {
+  currentLang = lang;
+  document.getElementById('currentLang').textContent = lang.toUpperCase();
+  
+  // Translate all elements with data-i18n attribute
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    if (translations[lang][key]) {
+      el.textContent = translations[lang][key];
+    }
+  });
+  
+  // Re-render calendar with new language (for day headers, etc.)
+  if (calendarEvents.length > 0) {
+    renderCalendar();
+  }
+  
+  localStorage.setItem('rsb_lang', lang);
+}
+    // ==================== FETCH & PARSE ====================
+    async function loadCalendarEvents() {
+      showLoading(true);
+      let icsText = null;
+
+      for (const url of CORS_PROXIES) {
+        try {
+          console.log(`📡 Trying: ${url}`);
+          const res = await fetch(url, { cache: 'no-store' });
+          if (res.ok) {
+            icsText = await res.text();
+            console.log(`✅ Fetched successfully from: ${url}`);
+            break;
+          }
+        } catch (e) { console.warn(`❌ Failed: ${url}`); }
+      }
+
+      if (!icsText) {
+        showToast('❌ Could not load calendar. Check internet or CORS settings.', 'error');
+        showLoading(false);
+        return;
+      }
+
+      try {
+        calendarEvents = parseICS(icsText);
+        console.log(`📋 Parsed ${calendarEvents.length} raw events`);
+
+        const now = new Date();
+        const weekAgo = new Date(now.getTime() - 7 * 86400000);
+        const oneYearLater = new Date(now.getTime() + 365 * 86400000);
+
+        calendarEvents = calendarEvents
+          .filter(e => e.start && e.start >= weekAgo && e.start <= oneYearLater)
+          .sort((a, b) => a.start - b.start);
+
+        console.log(`📅 Displaying ${calendarEvents.length} upcoming matches`);
+        showLoading(false);
+        renderCalendar();
+      } catch (err) {
+        console.error('❌ Parse error:', err);
+        showToast('Failed to parse calendar data.', 'error');
+        showLoading(false);
+      }
+    }
+
+    // Robust ICS Parser
+    function parseICS(icsText) {
+      const events = [];
+      const lines = icsText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+      let inEvent = false;
+      let current = null;
+
+      for (let i = 0; i < lines.length; i++) {
+        let line = lines[i].trim();
+        // Handle line folding
+        while (i + 1 < lines.length && (lines[i + 1].startsWith(' ') || lines[i + 1].startsWith('\t'))) {
+          line += lines[++i].trim();
+        }
+
+        if (line === 'BEGIN:VEVENT') { inEvent = true; current = { summary:'', description:'', location:'', start:null, end:null, uid:'' }; continue; }
+        if (line === 'END:VEVENT') { if (inEvent && current?.start) events.push(current); inEvent = false; current = null; continue; }
+        if (!inEvent || !current) continue;
+
+        if (line.startsWith('SUMMARY:')) current.summary = decodeICS(line.substring(8));
+        else if (line.startsWith('DESCRIPTION:')) current.description = decodeICS(line.substring(12));
+        else if (line.startsWith('LOCATION:')) current.location = decodeICS(line.substring(9));
+        else if (line.startsWith('UID:')) current.uid = line.substring(4);
+        else if (line.startsWith('DTSTART') || line.startsWith('DTEND')) {
+          const isStart = line.startsWith('DTSTART');
+          const dateVal = line.substring(line.indexOf(':') + 1).trim();
+          const dateObj = parseDate(dateVal, line);
+          if (isStart) current.start = dateObj; else current.end = dateObj;
+        }
+      }
+      return events;
+    }
+
+    function decodeICS(str) {
+      return str.replace(/\\,/g, ',').replace(/\\;/g, ';').replace(/\\n/g, '\n').replace(/\\\\/g, '\\');
+    }
+
+    function parseDate(str, rawLine) {
+      if (!str) return null;
+      const hasZ = str.endsWith('Z');
+      const clean = str.replace('Z', '');
+      if (clean.length < 14) return null;
+
+      const y = clean.substring(0,4), m = clean.substring(4,6), d = clean.substring(6,8);
+      const h = clean.substring(9,11) || '00', min = clean.substring(11,13) || '00', s = clean.substring(13,15) || '00';
+
+      // If UTC (ends with Z), parse directly. Otherwise assume Belgrade time (UTC+1/+2)
+      if (hasZ) return new Date(`${y}-${m}-${d}T${h}:${min}:${s}Z`);
+      
+      // Fallback: parse as local but log warning. For match times, local display is usually fine.
+      return new Date(`${y}-${m}-${d}T${h}:${min}:${s}`);
+    }
+
+    // ==================== RENDER CALENDAR GRID ====================
+    function renderCalendar() {
+      const grid = document.getElementById('calendarGrid');
+      const list = document.getElementById('eventList');
+      const empty = document.getElementById('calendarEmpty');
+
+      empty.style.display = 'none';
+      grid.innerHTML = '';
+      list.innerHTML = '';
+
+      if (calendarEvents.length === 0) {
+        empty.style.display = 'block';
+        return;
+      }
+
+      // 👇 HEADERS: Monday-first order
+      ['mon','tue','wed','thu','fri','sat','sun'].forEach(d => {
+        const h = document.createElement('div');
+        h.className = 'calendar-header-day';
+        h.textContent = translations[currentLang][d];
+        grid.appendChild(h);
+      });
+
+      // 👇 OFFSET: Convert JS Sunday-start (0=Sun) to Monday-start (0=Mon)
+      const jsFirstDay = new Date(currentYear, currentMonth, 1).getDay();
+      const startOffset = (jsFirstDay + 6) % 7;
+
+      // Empty cells before 1st of month
+      for (let i = 0; i < startOffset; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'calendar-day other-month';
+        grid.appendChild(cell);
+      }
+
+      // 👇 DAYS: 1 to last day of month
+      const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
+      const today = new Date();
+      const isCurrentMonth = currentYear === today.getFullYear() && currentMonth === today.getMonth();
+
+      for (let day = 1; day <= totalDays; day++) {
+        const cell = document.createElement('div');
+        cell.className = 'calendar-day';
+        if (isCurrentMonth && day === today.getDate()) cell.classList.add('today');
+
+        const dayNum = document.createElement('span');
+        dayNum.className = 'day-number';
+        dayNum.textContent = day;
+        cell.appendChild(dayNum);
+
+        const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+        const dayEvents = calendarEvents.filter(e => e.start.toISOString().split('T')[0] === dateStr);
+
+        if (dayEvents.length > 0) {
+          dayEvents.slice(0,3).forEach(() => {
+            const dot = document.createElement('span');
+            dot.className = 'event-dot';
+            cell.appendChild(dot);
+          });
+          if (dayEvents.length > 3) {
+            const cnt = document.createElement('span');
+            cnt.className = 'event-count';
+            cnt.textContent = `+${dayEvents.length-3}`;
+            cell.appendChild(cnt);
+          }
+          cell.style.cursor = 'pointer';
+          cell.addEventListener('click', () => openEventModal(dayEvents[0]));
+          
+          dayEvents.forEach(ev => list.appendChild(createEventListItem(ev, day)));
+        }
+
+        grid.appendChild(cell);
+      }
+
+      // Fill remaining cells to complete 6-row grid
+      while (grid.children.length < 42) {
+        const cell = document.createElement('div');
+        cell.className = 'calendar-day other-month';
+        grid.appendChild(cell);
+      }
+    }
+
+    function createEventListItem(event, day) {
+      const item = document.createElement('div');
+      item.className = 'event-list-item';
+      const { opponent, competition, venue } = parseEventDetails(event);
+      const time = event.start.toLocaleTimeString(currentLang, { hour:'2-digit', minute:'2-digit', timeZone: TIMEZONE });
+      const monthKey = event.start.toLocaleString('en', { month: 'short' }).toLowerCase();
+      
+      item.innerHTML = `<div class="event-list-date">${day} ${translations[currentLang][monthKey]} • ${time}</div><div class="event-list-title">${opponent}</div><div class="event-list-competition">${competition} • ${venue}</div>`;
+      item.addEventListener('click', () => openEventModal(event));
+      return item;
+    }
+
+    function parseEventDetails(event) {
+      const title = event.summary || '';
+      const loc = event.location || '';
+      let opponent = title, competition = 'Match', venue = loc || 'Belgrade';
+
+      if (/superliga|super liga/i.test(title)) competition = currentLang === 'sr' ? 'SuperLiga' : 'Serbian SuperLiga';
+      else if (/champions|ucl/i.test(title)) competition = 'UEFA Champions League';
+      else if (/europa|uel/i.test(title)) competition = 'UEFA Europa League';
+      else if (/kup|cup/i.test(title)) competition = currentLang === 'sr' ? 'Kup Srbije' : 'Serbian Cup';
+
+      const vsMatch = title.match(/(?:vs|protiv|против)\s+(.+)/i);
+      if (vsMatch) opponent = vsMatch[1].trim();
+
+      if (/rajko mitić|marakana|belgrade|beograd/i.test(loc)) {
+        venue = currentLang === 'sr' ? 'Stadion Rajko Mitić, Beograd' : 'Rajko Mitić Stadium, Belgrade';
+      }
+
+      return { opponent, competition, venue, description: event.description };
+    }
+
+    // ==================== MODAL ====================
+    function openEventModal(event) {
+      selectedEvent = event;
+      const { opponent, competition, venue, description } = parseEventDetails(event);
+      
+      document.getElementById('modalTitle').textContent = opponent;
+      document.getElementById('modalCompetition').textContent = competition;
+      document.getElementById('modalCompetitionFull').textContent = competition;
+      document.getElementById('modalOpponent').textContent = opponent;
+      document.getElementById('modalVenue').textContent = venue;
+      
+      document.getElementById('modalDateTime').textContent = event.start.toLocaleString(currentLang, {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+        hour: '2-digit', minute: '2-digit', timeZone: TIMEZONE
+      });
+
+      const descCont = document.getElementById('modalDescriptionContainer');
+      if (description?.trim()) {
+        document.getElementById('modalDescription').textContent = description;
+        descCont.style.display = 'block';
+      } else descCont.style.display = 'none';
+
+      document.getElementById('eventModal').classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeEventModal() {
+      document.getElementById('eventModal').classList.remove('active');
+      document.body.style.overflow = '';
+      selectedEvent = null;
+    }
+
+    function populateMonthYearSelectors() {
+      const mSel = document.getElementById('monthSelect');
+      const ySel = document.getElementById('yearSelect');
+      ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'].forEach((m,i) => {
+        const opt = document.createElement('option');
+        opt.value = i; opt.textContent = translations[currentLang][m];
+        if (i === currentMonth) opt.selected = true;
+        mSel.appendChild(opt);
+      });
+      const cy = new Date().getFullYear();
+      for (let y = cy - 2; y <= cy + 2; y++) {
+        const opt = document.createElement('option');
+        opt.value = y; opt.textContent = y;
+        if (y === currentYear) opt.selected = true;
+        ySel.appendChild(opt);
+      }
+      mSel.onchange = e => { currentMonth = +e.target.value; renderCalendar(); };
+      ySel.onchange = e => { currentYear = +e.target.value; renderCalendar(); };
+    }
+
+    function showLoading(show) {
+      const ld = document.getElementById('calendarLoading');
+      const gr = document.getElementById('calendarGrid');
+      const ls = document.getElementById('eventList');
+      ld.style.display = show ? 'block' : 'none';
+      if (!show && calendarEvents.length > 0) {
+        gr.style.display = 'grid';
+        ls.style.display = 'flex';
+      }
+    }
+
+        // ==================== EVENT LISTENERS ====================
+    function setupEventListeners() {
+      // Theme Toggle
+      document.getElementById('themeToggle').onclick = () => {
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        applyTheme(newTheme);
+        showToast(newTheme === 'dark' ? translations[currentLang].darkMode : translations[currentLang].lightMode);
+      };
+
+      // Language Toggle
+      document.getElementById('langToggle').onclick = () => {
+        const newLang = currentLang === 'en' ? 'sr' : 'en';
+        applyLanguage(newLang);
+      };
+
+      // Notifications
+      document.getElementById('notifyToggle').onclick = toggleNotifications;
+      if (notificationsEnabled) document.getElementById('notifyToggle').classList.add('active');
+
+      // Refresh
+      document.getElementById('refreshBtn').onclick = async () => {
+        document.getElementById('refreshBtn').disabled = true;
+        await loadCalendarEvents();
+        document.getElementById('refreshBtn').disabled = false;
+      };
+
+          // ==================== CALENDAR NAVIGATION ====================
+    function goToMonth(month, year) {
+      currentMonth = month;
+      currentYear = year;
+      
+      // Update dropdowns
+      document.getElementById('monthSelect').value = currentMonth;
+      document.getElementById('yearSelect').value = currentYear;
+      
+      // Force re-render
+      renderCalendar();
+    }
+
+    document.getElementById('prevMonth').onclick = () => {
+      if (currentMonth === 0) {
+        currentMonth = 11;
+        currentYear--;
+      } else {
+        currentMonth--;
+      }
+      goToMonth(currentMonth, currentYear);
+    };
+
+    document.getElementById('nextMonth').onclick = () => {
+      if (currentMonth === 11) {
+        currentMonth = 0;
+        currentYear++;
+      } else {
+        currentMonth++;
+      }
+      goToMonth(currentMonth, currentYear);
+    };
+
+    document.getElementById('todayBtn').onclick = () => {
+      const now = new Date();
+      goToMonth(now.getMonth(), now.getFullYear());
+    };
+
+      // Modal
+      document.getElementById('modalClose').onclick = closeEventModal;
+      document.getElementById('eventModal').onclick = (e) => {
+        if (e.target.id === 'eventModal') closeEventModal();
+      };
+      
+      // Modal Actions
+      document.getElementById('addToCalendarBtn').onclick = () => {
+        if (selectedEvent) createCalendarLink(selectedEvent);
+        showToast('📅 Opening calendar app...', 'success');
+      };
+      document.getElementById('shareEventBtn').onclick = async () => {
+        if (!selectedEvent || !navigator.share) return showToast('🔗 Share not supported', 'warning');
+        const { opponent, competition, venue } = parseEventDetails(selectedEvent);
+        const time = selectedEvent.start.toLocaleString(currentLang, {
+          weekday: 'long', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: TIMEZONE
+        });
+        try {
+          await navigator.share({ title: `⚽ ${opponent}`, text: `${competition}\n${time}\n📍 ${venue}`, url: location.href });
+        } catch (e) {
+          if (e.name !== 'AbortError') navigator.clipboard.writeText(`${opponent}\n${competition}\n${time}\n📍 ${venue}`);
+        }
+      };
+      document.getElementById('installBtn').onclick = installApp;
+      
+      // Keyboard Shortcuts
+      document.onkeydown = (e) => {
+        if (e.key === 'Escape') closeEventModal();
+      };
+    }
+
+    // ==================== NOTIFICATIONS ====================
+    async function toggleNotifications() {
+      if (!('Notification' in window)) return showToast(translations[currentLang].notifyBlocked, 'error');
+      if (Notification.permission === 'granted') {
+        notificationsEnabled = false; localStorage.setItem('rsb_notify', 'false');
+        showToast(translations[currentLang].notifyDisabled, 'warning');
+        document.getElementById('notifyToggle').classList.remove('active');
+      } else if (Notification.permission === 'denied') {
+        showToast(translations[currentLang].notifyBlocked, 'error');
+      } else {
+        const perm = await Notification.requestPermission();
+        if (perm === 'granted') {
+          notificationsEnabled = true; localStorage.setItem('rsb_notify', 'true');
+          showToast(translations[currentLang].notifyEnabled, 'success');
+          document.getElementById('notifyToggle').classList.add('active');
+        }
+      }
+    }
+
+    // ==================== PWA & SW ====================
+    function checkInstallability() {
+      window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; document.getElementById('installBanner').classList.add('show'); });
+      window.addEventListener('appinstalled', () => { document.getElementById('installBanner').classList.remove('show'); showToast(translations[currentLang].installed); deferredPrompt = null; });
+    }
+    async function installApp() { if (!deferredPrompt) return; deferredPrompt.prompt(); const { outcome } = await deferredPrompt.userChoice; if (outcome === 'accepted') deferredPrompt = null; }
+    async function registerServiceWorker() { if ('serviceWorker' in navigator) { try { await navigator.serviceWorker.register('sw.js'); } catch(e) {} } }
+
+    function createCalendarLink(event) {
+      const { opponent, competition, venue } = parseEventDetails(event);
+      const end = new Date(event.start.getTime() + 2*3600000);
+      const startStr = event.start.toISOString().replace(/-|:|\.\d+/g,'');
+      const endStr = end.toISOString().replace(/-|:|\.\d+/g,'');
+      window.open(`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`Red Star vs ${opponent}`)}&dates=${startStr}/${endStr}&details=${encodeURIComponent(`${competition}\nVenue: ${venue}`)}&location=${encodeURIComponent(venue)}`, '_blank');
+    }
+
+    function showToast(msg, type='success') {
+      const t = document.getElementById('toast');
+      document.getElementById('toastIcon').textContent = type==='success'?'✅':type==='warning'?'⚠️':'❌';
+      document.getElementById('toastMessage').textContent = msg;
+      t.className = `toast ${type} show`;
+      setTimeout(() => t.classList.remove('show'), 4000);
+    }
+  </script>
+</body>
+</html>
