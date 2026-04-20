@@ -1,4 +1,4 @@
-# FK Crvena Zvezda Match Calendar
+# ⭐ FK Crvena Zvezda Match Calendar
 
 [![PWA](https://img.shields.io/badge/PWA-Enabled-c8102e?style=for-the-badge&logo=progressive-web-apps)](https://web.dev/progressive-web-apps/)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
