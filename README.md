@@ -48,6 +48,10 @@
 - All data stored locally in browser
 - Public Google Calendar feed only
 
+### ☁️ Live Demo
+
+[Click here to try it live](https://vojislav77.github.io/redstar-calendar/)
+
 ## 🚀 Quick Start
 
 ### Option 1: Use Directly
