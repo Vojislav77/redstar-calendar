@@ -6,11 +6,9 @@
 
 **FK Red Star Belgrade match calendar Progressive Web App (PWA)** with live statistics, bilingual support (English/Serbian), dark mode, push notifications, and offline functionality.
 
-<img width="1211" height="1089" alt="cz01" src="https://github.com/user-attachments/assets/1de55a62-fccd-4672-8e4c-c743679af17a" />
-<img width="1217" height="663" alt="cz02" src="https://github.com/user-attachments/assets/6d314d44-21a9-49b7-aee0-d05eaa982c37" />
-
-
 ![FK Red Star Calendar Preview](https://img.shields.io/badge/🔴⚪-Navijači%2C%20zajedno%20do%20titule!-c8102e?style=for-the-badge)
+
+<img width="1229" height="1766" alt="fkcz" src="https://github.com/user-attachments/assets/a641e862-c625-49fb-af57-1c622248fd56" />
 
 ## 🌟 Features
 
