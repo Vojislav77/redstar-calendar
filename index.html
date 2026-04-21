@@ -574,9 +574,17 @@
       const item = document.createElement('div');
       item.className = 'event-list-item';
       const { opponent, competition, venue } = parseEventDetails(event);
-      const time = event.start.toLocaleTimeString(currentLang, { hour:'2-digit', minute:'2-digit', timeZone: TIMEZONE });
+  
+      // 👇 FIX: Use Serbian Latin for mobile list view too
+      const dateLocale = currentLang === 'sr' ? 'sr-Latn-RS' : currentLang;
+      const time = event.start.toLocaleTimeString(dateLocale, { 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        timeZone: TIMEZONE 
+      });
+  
       const monthKey = event.start.toLocaleString('en', { month: 'short' }).toLowerCase();
-      
+  
       item.innerHTML = `<div class="event-list-date">${day} ${translations[currentLang][monthKey]} • ${time}</div><div class="event-list-title">${opponent}</div><div class="event-list-competition">${competition} • ${venue}</div>`;
       item.addEventListener('click', () => openEventModal(event));
       return item;
@@ -612,6 +620,9 @@
       document.getElementById('modalCompetitionFull').textContent = competition;
       document.getElementById('modalOpponent').textContent = opponent;
       document.getElementById('modalVenue').textContent = venue;
+
+      // 👇 FIX: Use Serbian Latin script for dates
+      const dateLocale = currentLang === 'sr' ? 'sr-Latn-RS' : currentLang;
       
       document.getElementById('modalDateTime').textContent = event.start.toLocaleString(currentLang, {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
