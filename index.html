@@ -614,30 +614,57 @@
     function openEventModal(event) {
       selectedEvent = event;
       const { opponent, competition, venue, description } = parseEventDetails(event);
-      
+  
       document.getElementById('modalTitle').textContent = opponent;
       document.getElementById('modalCompetition').textContent = competition;
       document.getElementById('modalCompetitionFull').textContent = competition;
       document.getElementById('modalOpponent').textContent = opponent;
       document.getElementById('modalVenue').textContent = venue;
-
-      // 👇 FIX: Use Serbian Latin script for dates
-      const dateLocale = currentLang === 'sr' ? 'sr-Latn-RS' : currentLang;
-      
-      document.getElementById('modalDateTime').textContent = event.start.toLocaleString(currentLang, {
+  
+      // 👇 FIX: Format date manually to ensure Latin script for Serbian
+      const dateObj = event.start;
+      const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+      const monthName = dateObj.toLocaleDateString('en-US', { month: 'long' });
+      const dayNum = dateObj.getDate();
+      const year = dateObj.getFullYear();
+      const hours = String(dateObj.getHours()).padStart(2, '0');
+      const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+  
+      // Convert English day/month to Serbian Latin
+      const dayMap = {
+       'Sunday': 'nedelja', 'Monday': 'ponedeljak', 'Tuesday': 'utorak',
+       'Wednesday': 'sreda', 'Thursday': 'četvrtak', 'Friday': 'petak', 'Saturday': 'subota'
+      };
+      const monthMap = {
+       'January': 'januar', 'February': 'februar', 'March': 'mart', 'April': 'april',
+       'May': 'maj', 'June': 'jun', 'July': 'jul', 'August': 'avgust',
+       'September': 'septembar', 'October': 'oktobar', 'November': 'novembar', 'December': 'decembar'
+      };
+  
+      let formattedDate;
+      if (currentLang === 'sr') {
+        const srDay = dayMap[dayName] || dayName;
+        const srMonth = monthMap[monthName] || monthName;
+        formattedDate = `${srDay}, ${dayNum}. ${srMonth} ${year}. ${hours}:${minutes}`;
+      } else {
+        formattedDate = dateObj.toLocaleString('en-US', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-        hour: '2-digit', minute: '2-digit', timeZone: TIMEZONE
+        hour: '2-digit', minute: '2-digit'
       });
-
-      const descCont = document.getElementById('modalDescriptionContainer');
-      if (description?.trim()) {
-        document.getElementById('modalDescription').textContent = description;
-        descCont.style.display = 'block';
-      } else descCont.style.display = 'none';
-
-      document.getElementById('eventModal').classList.add('active');
-      document.body.style.overflow = 'hidden';
     }
+  
+    document.getElementById('modalDateTime').textContent = formattedDate;
+
+    const descCont = document.getElementById('modalDescriptionContainer');
+    if (description?.trim()) {
+      document.getElementById('modalDescription').textContent = description;
+      descCont.style.display = 'block';
+    } else descCont.style.display = 'none';
+
+    document.getElementById('eventModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+
     function closeEventModal() {
       document.getElementById('eventModal').classList.remove('active');
       document.body.style.overflow = '';
