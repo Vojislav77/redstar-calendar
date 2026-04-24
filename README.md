@@ -8,7 +8,7 @@
 
 ![FK Red Star Calendar Preview](https://img.shields.io/badge/🔴⚪-Navijači%2C%20zajedno%20do%20titule!-c8102e?style=for-the-badge)
 
-<img width="1229" height="1766" alt="fkcz" src="https://github.com/user-attachments/assets/a641e862-c625-49fb-af57-1c622248fd56" />
+<img width="1681" height="2010" alt="fkcz-cal" src="https://github.com/user-attachments/assets/45321f0f-39ab-4e4a-a14c-208dae9d8ec6" />
 
 ## 🌟 Features
 
