@@ -8,7 +8,7 @@
 
 ![FK Red Star Calendar Preview](https://img.shields.io/badge/🔴⚪-Navijači%2C%20zajedno%20do%20titule!-c8102e?style=for-the-badge)
 
-<img width="1681" height="2010" alt="fkcz-cal" src="https://github.com/user-attachments/assets/45321f0f-39ab-4e4a-a14c-208dae9d8ec6" />
+<img width="1209" height="1050" alt="fcrs" src="https://github.com/user-attachments/assets/ec4423a8-77fa-452e-863f-93b45943d99c" />
 
 ## 🌟 Features
 
@@ -28,13 +28,6 @@
 - 📱 **Fully responsive** design (mobile, tablet, desktop)
 - ⌨️ Keyboard shortcut: Press `C` to focus calendar
 - 🎯 Clean, modern UI with Red Star branding
-
-### 📊 Live Statistics
-- Current league position & standings
-- Season record (W-D-L) & points
-- Goals for/against statistics
-- Current form indicator
-- Top scorers panel with player positions
 
 ### 🔔 Notifications & PWA
 - 🔔 Browser push notifications for match reminders
