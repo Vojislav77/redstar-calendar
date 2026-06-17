@@ -2,7 +2,6 @@
 
 [![PWA](https://img.shields.io/badge/PWA-Enabled-c8102e?style=for-the-badge&logo=progressive-web-apps)](https://web.dev/progressive-web-apps/)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
-[![Language](https://img.shields.io/badge/Lang-EN%2F%20SR-ffd700?style=for-the-badge)]()
 
 **FK Red Star Belgrade match calendar Progressive Web App (PWA)** with live statistics, bilingual support (English/Serbian), dark mode, push notifications, and offline functionality.
 
@@ -19,7 +18,6 @@ A lightweight, high-performance, client-side web application designed to fetch, 
 * **Responsive Hybrid Layout**: Implements a dual-view system optimized for all device types:
     * **Desktop View**: A comprehensive 7-column calendar grid showing match distributions across the current month.
     * **Mobile View**: Automatically transforms into an optimized chronological timeline view for seamless vertical scrolling on smaller touch screens.
-* **Localization (Internationalization)**: Full, runtime-switchable support for English and Serbian (Latin script), including precise programmatic mapping of dates, weekdays, and months.
 * **Progressive Web App (PWA)**: Equipped with a service worker configuration, web manifest, and standalone display mode to support native-like installation on iOS and Android devices.
 * **Calendar Integration**: Enables users to generate external deep-links to instantly add specific match events to their personal Google Calendars with populated summaries, times, and venue details.
 
