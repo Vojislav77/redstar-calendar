@@ -26,6 +26,7 @@ A lightweight, high-performance, client-side web application designed to fetch, 
 ## Project Structure
 
 The repository maintains a flat, self-contained structure for simple static hosting deployment:
+
 ├── index.html        # Main application layout, styles, and core logic
 ├── manifest.json     # PWA configuration and web app manifest
 ├── sw.js             # Service worker handling offline caching rules
