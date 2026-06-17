@@ -33,6 +33,7 @@ The repository maintains a flat, self-contained structure for simple static host
 ├── sw.js             # Service worker handling offline caching rules
 └── logo.png          # High-resolution club crest and application icon
 
+
 ### ☁️ Live Demo
 
 [Click here to try it live](https://vojislav77.github.io/redstar-calendar/)
