@@ -1,0 +1,21 @@
+{
+  "name": "FK Crvena Zvezda Match Calendar",
+  "short_name": "RedStar Calendar",
+  "description": "Official match calendar for FK Red Star Belgrade with auto-syncing fixtures, bilingual support, and offline caching",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#c8102e",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["sports", "calendar", "utilities"],
+  "lang": "en",
+  "dir": "ltr"
+}
