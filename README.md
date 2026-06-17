@@ -23,17 +23,8 @@ A lightweight, high-performance, client-side web application designed to fetch, 
 * **Progressive Web App (PWA)**: Equipped with a service worker configuration, web manifest, and standalone display mode to support native-like installation on iOS and Android devices.
 * **Calendar Integration**: Enables users to generate external deep-links to instantly add specific match events to their personal Google Calendars with populated summaries, times, and venue details.
 
-## Project Structure
 
-The repository maintains a flat, self-contained structure for simple static hosting deployment:
-
-├── index.html        # Main application layout, styles, and core logic
-├── manifest.json     # PWA configuration and web app manifest
-├── sw.js             # Service worker handling offline caching rules
-└── logo.png          # High-resolution club crest and application icon
-
-
-### ☁️ Live Demo
+### Live Demo
 
 [Click here to try it live](https://vojislav77.github.io/redstar-calendar/)
 
