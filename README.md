@@ -65,3 +65,23 @@ The application is structured as a Progressive Web App, meaning you can install 
     On Mobile (Android/Chrome): Tap the "Install app" banner at the top of the interface, or open the browser options menu and select "Add to Home screen".
 
     On Mobile (iOS/Safari): Tap the "Share" button at the bottom of the screen, scroll down, and select "Add to Home Screen".
+
+## Desktop App (Linux AppImage)
+
+A self-contained **Linux AppImage** (x86_64) is available for desktop users. It wraps the application in a lightweight Electron shell — no Node.js, system web dependencies, or build tools required.
+
+    Download redstar-calendar-1.0.0-x86_64.AppImage, then:
+
+    chmod +x redstar-calendar-1.0.0-x86_64.AppImage
+    ./redstar-calendar-1.0.0-x86_64.AppImage
+
+Notes on the AppImage build:
+
+* **Fully offline-capable**: the bundled Electron runtime ships its own rendering engine, so the app behaves identically to the browser version regardless of installed system packages.
+* **Icons**: uses `logo.png` for the window titlebar, the Plasma/KDE taskbar (via `StartupWMClass=redstar-calendar`), and the launcher menu entry.
+* **Window size**: opens at 1285×1215 on first launch (minimum 380×560).
+* **Data fetching**: tries the iCal source directly first (CORS is lifted inside the wrapper) and falls back to the public CORS proxies, making it resilient to proxy outages.
+* **Menu entry**: run the AppImage once, then add it to your application menu, or use the provided desktop file at `~/.local/share/applications/redstar-calendar.desktop`.
+* **Fallback**: if FUSE is unavailable on your system, launch with `--appimage-extract-and-run`.
+
+The AppImage is rebuilt by bundling the same `index.html`, `manifest.json`, `sw.js`, and `logo.png` used by the web version, so features (fixtures, bilingual UI, dark mode, reminders, calendar export) are identical in both editions.
