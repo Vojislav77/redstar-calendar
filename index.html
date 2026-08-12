@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <meta name="theme-color" content="#c8102e">
   <meta name="description" content="FK Red Star Belgrade Match Calendar">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://corsproxy.io https://api.codetabs.com https://calendar.google.com; base-uri 'self'">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="logo.png">
   <link rel="icon" type="image/png" href="logo.png">
@@ -153,8 +154,10 @@
         </div>
       </div>
       <div class="controls">
-        <button class="btn" id="themeToggle"><span class="theme-icon">☀️</span><span data-i18n="theme">Theme</span></button>
-        <button class="btn" id="refreshBtn"><span>🔄</span><span data-i18n="refresh">Refresh</span></button>
+        <button class="btn" id="themeToggle" aria-label="Toggle theme"><span class="theme-icon">☀️</span><span data-i18n="theme">Theme</span></button>
+        <button class="btn" id="langToggle" aria-label="Switch language"><span>🌐</span><span id="langLabel">SR</span></button>
+        <button class="btn" id="notifyBtn" aria-label="Toggle notifications"><span>🔔</span><span data-i18n="notifications">Notifications</span></button>
+        <button class="btn" id="refreshBtn" aria-label="Refresh"><span>🔄</span><span data-i18n="refresh">Refresh</span></button>
       </div>
     </header>
 
@@ -170,9 +173,9 @@
       <div class="calendar-nav">
         <div class="calendar-title"><span>🗓️</span><select id="monthSelect"></select><select id="yearSelect"></select></div>
         <div class="nav-buttons">
-          <button class="btn" id="prevMonth">◀</button>
+          <button class="btn" id="prevMonth" aria-label="Previous month">◀</button>
           <button class="btn" id="todayBtn" data-i18n="today">Today</button>
-          <button class="btn" id="nextMonth">▶</button>
+          <button class="btn" id="nextMonth" aria-label="Next month">▶</button>
         </div>
       </div>
       <div class="calendar-grid" id="calendarGrid"></div>
@@ -189,13 +192,13 @@
     </div>
 
     <div class="modal-overlay" id="eventModal">
-      <div class="modal">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
         <div class="modal-header">
           <div>
             <span class="event-competition" id="modalCompetition">SuperLiga</span>
             <h3 class="modal-title" id="modalTitle">Match</h3>
           </div>
-          <button class="modal-close" id="modalClose">&times;</button>
+          <button class="modal-close" id="modalClose" aria-label="Close">&times;</button>
         </div>
         <div class="modal-body">
           <div class="event-detail">
@@ -256,11 +259,14 @@
     // ==================== TRANSLATIONS ====================
     const translations = {
       en: {
-        clubName:"Red Star Belgrade", subtitle:"Official Match Calendar", theme:"Theme", refresh:"Refresh", today:"Today", loadingCalendar:"Loading matches...", noMatches:"No matches found", dateTime:"Date & Time", opponent:"Opponent", venue:"Venue", competition:"Competition", description:"Description", motto:"Navijači, zajedno do titule!", footerText:"Data: Google Calendar", lightMode:"☀️ Light mode", darkMode:"🌙 Dark mode", sun:"Sun", mon:"Mon", tue:"Tue", wed:"Wed", thu:"Thu", fri:"Fri", sat:"Sat", jan:"Jan", feb:"Feb", mar:"Mar", apr:"Apr", may:"May", jun:"Jun", jul:"Jul", aug:"Aug", sep:"Sep", oct:"Oct", nov:"Nov", dec:"Dec"
+        clubName:"Red Star Belgrade", subtitle:"Official Match Calendar", theme:"Theme", refresh:"Refresh", today:"Today", loadingCalendar:"Loading matches...", noMatches:"No matches found", dateTime:"Date & Time", opponent:"Opponent", venue:"Venue", competition:"Competition", description:"Description", motto:"Navijači, zajedno do titule!", footerText:"Data: Google Calendar", notifications:"Notifications", lightMode:"☀️ Light mode", darkMode:"🌙 Dark mode", sun:"Sun", mon:"Mon", tue:"Tue", wed:"Wed", thu:"Thu", fri:"Fri", sat:"Sat", jan:"Jan", feb:"Feb", mar:"Mar", apr:"Apr", may:"May", jun:"Jun", jul:"Jul", aug:"Aug", sep:"Sep", oct:"Oct", nov:"Nov", dec:"Dec"
+      },
+      sr: {
+        clubName:"Crvena zvezda", subtitle:"Zvanični kalendar utakmica", theme:"Tema", refresh:"Osveži", today:"Danas", loadingCalendar:"Učitavanje utakmica...", noMatches:"Nema pronađenih utakmica", dateTime:"Datum i vreme", opponent:"Protivnik", venue:"Lokacija", competition:"Takmičenje", description:"Opis", motto:"Navijači, zajedno do titule!", footerText:"Podaci: Google Calendar", notifications:"Obaveštenja", lightMode:"☀️ Svetli režim", darkMode:"🌙 Tamni režim", sun:"Ned", mon:"Pon", tue:"Uto", wed:"Sre", thu:"Čet", fri:"Pet", sat:"Sub", jan:"Jan", feb:"Feb", mar:"Mar", apr:"Apr", may:"Maj", jun:"Jun", jul:"Jul", aug:"Avg", sep:"Sep", oct:"Okt", nov:"Nov", dec:"Dec"
       }
     };
 
-    let currentLang = 'en';
+    let currentLang = translations[localStorage.getItem('rsb_lang')] ? localStorage.getItem('rsb_lang') : 'en';
     let currentTheme = localStorage.getItem('rsb_theme') || 'light';
     let deferredPrompt = null;
     let calendarEvents = [];
@@ -268,6 +274,9 @@
     let currentYear = new Date().getFullYear();
     let selectedEvent = null;
     let toastTimeout = null;
+    let lastFocused = null;
+    let notifyTimer = null;
+    const notifiedIds = new Set();
 
     document.addEventListener('DOMContentLoaded', async () => {
       try {
@@ -277,6 +286,7 @@
         populateMonthYearSelectors();
         checkInstallability();
         registerServiceWorker();
+        initNotifications();
 
         await new Promise(r => setTimeout(r, 100));
         await loadCalendarEvents();
@@ -293,10 +303,17 @@
       localStorage.setItem('rsb_theme', theme);
     }
 
-    function applyLanguage() {
+    function applyLanguage(lang) {
+      currentLang = translations[lang] ? lang : 'en';
+      localStorage.setItem('rsb_lang', currentLang);
+      document.documentElement.lang = currentLang;
+      const label = document.getElementById('langLabel');
+      if (label) label.textContent = currentLang === 'en' ? 'SR' : 'EN';
       document.querySelectorAll('[data-i18n]').forEach(el => {
-        if (translations['en'][el.dataset.i18n]) el.textContent = translations['en'][el.dataset.i18n];
+        const key = el.dataset.i18n;
+        el.textContent = translations[currentLang][key] || translations['en'][key];
       });
+      populateMonthYearSelectors();
       renderCalendar();
     }
 
@@ -374,15 +391,37 @@
 
     function decodeICS(str) { return str.replace(/\\,/g,',').replace(/\\;/g,';').replace(/\\n/g,'\n').replace(/\\\\/g,'\\'); }
 
+    function tzOffsetMinutes(date, timeZone) {
+      try {
+        const dtf = new Intl.DateTimeFormat('en-US', {
+          timeZone, hour12: false,
+          year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit'
+        });
+        const map = {};
+        dtf.formatToParts(date).forEach(p => { if (p.type !== 'literal') map[p.type] = +p.value; });
+        const asUTC = Date.UTC(map.year, map.month - 1, map.day, map.hour % 24, map.minute, map.second);
+        return Math.round((asUTC - date.getTime()) / 60000);
+      } catch (e) { return 0; }
+    }
+
     function parseRawDate(val) {
       try {
-        const cleanVal = val.trim().replace('Z','');
+        const trimmed = val.trim();
+        const isUTC = trimmed.endsWith('Z');
+        const cleanVal = trimmed.replace('Z','');
         if (cleanVal.length < 8) return null;
         const y = parseInt(cleanVal.substring(0,4)), m = parseInt(cleanVal.substring(4,6))-1, d = parseInt(cleanVal.substring(6,8));
         const h = cleanVal.length >= 11 ? parseInt(cleanVal.substring(9,11)) || 0 : 0;
         const min = cleanVal.length >= 13 ? parseInt(cleanVal.substring(11,13)) || 0 : 0;
-        return new Date(Date.UTC(y, m, d, h, min));
+        const asUTC = Date.UTC(y, m, d, h, min);
+        if (isUTC) return new Date(asUTC);
+        return new Date(asUTC - tzOffsetMinutes(new Date(asUTC), TIMEZONE) * 60000);
       } catch(e) { return null; }
+    }
+
+    function dateKey(date) {
+      if (!date || isNaN(date.getTime())) return '';
+      return new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: TIMEZONE }).format(date);
     }
 
     // ✅ ROBUST MULTI-PROXY AUTOFETCH ENGINE
@@ -393,7 +432,7 @@
       const cached = getCachedData();
       if (cached) {
         calendarEvents = cached;
-        updateStatus('success', '✅', `${cached.length} events loaded`);
+        updateStatus('success', '', `${cached.length} events loaded`);
         showLoading(false);
         renderCalendar();
         return;
@@ -465,7 +504,7 @@
           document.getElementById('calendarEmpty').style.display = 'block';
         } else {
           setCachedData(calendarEvents);
-          updateStatus('success', '✅', `${calendarEvents.length} events loaded`);
+          updateStatus('success', '', `${calendarEvents.length} events loaded`);
         }
       } catch (err) {
         updateStatus('error', '⚠️', 'Parsing error');
@@ -479,6 +518,7 @@
       const statusText = document.getElementById('statusText');
       if(statusIcon && statusText) {
         statusIcon.textContent = icon;
+        statusIcon.style.display = icon ? '' : 'none';
         statusText.textContent = text;
         statusText.className = `status-text ${type}`;
       }
@@ -512,7 +552,7 @@
         const dayNum = document.createElement('span'); dayNum.className = 'day-number'; dayNum.textContent = day; cell.appendChild(dayNum);
 
         const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-        const dayEvents = calendarEvents.filter(e => e.start && e.start.toISOString().split('T')[0] === dateStr);
+        const dayEvents = calendarEvents.filter(e => e.start && dateKey(e.start) === dateStr);
 
         if (dayEvents.length > 0) {
           dayEvents.slice(0,3).forEach(() => { const dot = document.createElement('span'); dot.className = 'event-dot'; cell.appendChild(dot); });
@@ -529,10 +569,14 @@
 
     function createEventListItem(event, day) {
       const item = document.createElement('div'); item.className = 'event-list-item';
-      const { opponent, competition, venue } = event;
-      const time = formatTime(event.start);
+      const dateDiv = document.createElement('div'); dateDiv.className = 'event-list-date';
       const monthKey = event.start.toLocaleString('en', { month: 'short' }).toLowerCase();
-      item.innerHTML = `<div class="event-list-date">${day} ${translations[currentLang][monthKey]} • ${time}</div><div class="event-list-title">${opponent}</div><div class="event-list-competition">${competition} • ${venue}</div>`;
+      dateDiv.textContent = `${day} ${translations[currentLang][monthKey] || translations['en'][monthKey]} • ${formatTime(event.start)}`;
+      const titleDiv = document.createElement('div'); titleDiv.className = 'event-list-title';
+      titleDiv.textContent = event.opponent || 'Unknown';
+      const compDiv = document.createElement('div'); compDiv.className = 'event-list-competition';
+      compDiv.textContent = `${event.competition || ''} • ${event.venue || ''}`;
+      item.append(dateDiv, titleDiv, compDiv);
       item.addEventListener('click', () => openEventModal(event));
       return item;
     }
@@ -554,27 +598,25 @@
 
       document.getElementById('eventModal').classList.add('active');
       document.body.style.overflow = 'hidden';
+      lastFocused = document.activeElement;
+      const closeBtn = document.getElementById('modalClose');
+      if (closeBtn) closeBtn.focus();
     }
 
     function formatDateTime(date) {
       if (!date || !(date instanceof Date) || isNaN(date.getTime())) return 'Invalid date';
-      const dayName = date.toLocaleDateString('en-GB', { weekday: 'long', timeZone: TIMEZONE });
-      const dayNum = date.toLocaleDateString('en-GB', { day: 'numeric', timeZone: TIMEZONE });
-      const monthName = date.toLocaleDateString('en-GB', { month: 'long', timeZone: TIMEZONE });
-      const year = date.toLocaleDateString('en-GB', { year: 'numeric', timeZone: TIMEZONE });
-      const hours = String(date.getHours()).padStart(2, '0');
-      const minutes = String(date.getMinutes()).padStart(2, '0');
-      return `${dayName}, ${dayNum} ${monthName}, ${year} at ${hours}:${minutes}`;
+      return new Intl.DateTimeFormat('en-GB', {
+        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: TIMEZONE
+      }).format(date);
     }
 
     function formatTime(date) {
       if (!date || !(date instanceof Date) || isNaN(date.getTime())) return '--:--';
-      const hours = String(date.getHours()).padStart(2, '0');
-      const minutes = String(date.getMinutes()).padStart(2, '0');
-      return `${hours}:${minutes}`;
+      return new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: TIMEZONE }).format(date);
     }
 
-    function closeEventModal() { document.getElementById('eventModal').classList.remove('active'); document.body.style.overflow = ''; selectedEvent = null; }
+    function closeEventModal() { document.getElementById('eventModal').classList.remove('active'); document.body.style.overflow = ''; selectedEvent = null; if (lastFocused) { lastFocused.focus(); lastFocused = null; } }
 
     function populateMonthYearSelectors() {
       const mSel = document.getElementById('monthSelect'), ySel = document.getElementById('yearSelect');
@@ -599,8 +641,9 @@
       const ld = document.getElementById('calendarLoading'), gr = document.getElementById('calendarGrid'), ls = document.getElementById('eventList');
       if(ld) ld.style.display = show ? 'block' : 'none';
       if (!show && calendarEvents?.length > 0) {
-        if(gr && window.innerWidth > 768) gr.style.display = 'grid';
-        if(ls) ls.style.display = 'flex';
+        const isMobile = window.innerWidth <= 768;
+        if(gr) gr.style.display = isMobile ? 'none' : 'grid';
+        if(ls) ls.style.display = isMobile ? 'flex' : 'none';
       }
     }
 
@@ -610,6 +653,8 @@
         applyTheme(nt);
         showToast(nt === 'dark' ? translations[currentLang].darkMode : translations[currentLang].lightMode);
       };
+      document.getElementById('langToggle').onclick = () => applyLanguage(currentLang === 'en' ? 'sr' : 'en');
+      document.getElementById('notifyBtn').onclick = toggleNotifications;
       document.getElementById('refreshBtn').onclick = async () => {
         localStorage.removeItem(CONFIG.cacheKey);
         document.getElementById('refreshBtn').disabled = true;
@@ -649,6 +694,61 @@
         try { await navigator.serviceWorker.register('sw.js'); } catch(e) {}
       }
     }
+    function initNotifications() {
+      if (!('Notification' in window)) return;
+      const notifyBtn = document.getElementById('notifyBtn');
+      if (localStorage.getItem('rsb_notify') === '1' && Notification.permission === 'granted') {
+        notifyBtn.classList.add('active');
+        startNotificationScheduler();
+      }
+    }
+    function toggleNotifications() {
+      if (!('Notification' in window)) { showToast('🔔 Notifications not supported', 'warning'); return; }
+      const notifyBtn = document.getElementById('notifyBtn');
+      if (Notification.permission === 'granted' && notifyTimer) {
+        stopNotificationScheduler();
+        localStorage.removeItem('rsb_notify');
+        notifyBtn.classList.remove('active');
+        showToast('🔕 Notifications off', 'warning');
+        return;
+      }
+      Notification.requestPermission().then(perm => {
+        if (perm === 'granted') {
+          localStorage.setItem('rsb_notify', '1');
+          notifyBtn.classList.add('active');
+          startNotificationScheduler();
+          showToast('🔔 Notifications enabled');
+        } else {
+          showToast('🔕 Notifications denied', 'warning');
+        }
+      });
+    }
+    function startNotificationScheduler() {
+      if (notifyTimer) return;
+      notifyTimer = setInterval(checkUpcomingMatches, 30000);
+    }
+    function stopNotificationScheduler() {
+      if (notifyTimer) { clearInterval(notifyTimer); notifyTimer = null; }
+    }
+    function checkUpcomingMatches() {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      const now = Date.now();
+      calendarEvents.forEach(ev => {
+        const t = ev.start && ev.start.getTime();
+        if (!t || notifiedIds.has(ev.id)) return;
+        const diff = t - now;
+        if (diff > 0 && diff <= 30 * 60 * 1000) {
+          notifiedIds.add(ev.id);
+          try {
+            const n = new Notification(`⚽ ${ev.opponent || 'Match'}`, {
+              body: `${ev.competition || ''} • ${formatTime(ev.start)}\n📍 ${ev.venue || ''}`,
+              icon: 'logo.png', tag: `match-${ev.id}`
+            });
+            n.onclick = () => { window.focus(); openEventModal(ev); };
+          } catch(e) {}
+        }
+      });
+    }
     function createCalendarLink(event) {
       const { opponent, competition, venue } = event;
       const end = new Date(event.start.getTime() + 2*3600000);
@@ -665,7 +765,14 @@
 
       if (toastTimeout) clearTimeout(toastTimeout);
 
-      icon.textContent = type === 'success' ? '✅' : type === 'warning' ? '⚠️' : '❌';
+      const startsWithEmoji = /^[^\x00-\x7F]/u.test((message || '').trim());
+      if (startsWithEmoji) {
+        icon.textContent = '';
+        icon.style.display = 'none';
+      } else {
+        icon.textContent = type === 'success' ? '✅' : type === 'warning' ? '⚠️' : '❌';
+        icon.style.display = '';
+      }
       msg.textContent = message || 'Notification';
 
       toast.classList.remove('warning', 'error');
