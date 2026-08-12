@@ -1,8 +1,10 @@
-const CACHE_NAME = 'redstar-calendar-v2';
+const CACHE_NAME = 'redstar-calendar-v3';
 const ASSETS = [
   './',
-'./index.html',
-'./manifest.json'
+  './index.html',
+  './manifest.json',
+  './logo.png',
+  './favicon.ico'
 ];
 
 self.addEventListener('install', (event) => {
