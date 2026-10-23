@@ -1,10 +1,11 @@
-const CACHE_NAME = 'redstar-calendar-v3';
+const CACHE_NAME = 'redstar-calendar-v2.0.0';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './logo.png',
-  './favicon.ico'
+  './favicon.ico',
+  './fixtures.ics'
 ];
 
 self.addEventListener('install', (event) => {
@@ -26,30 +27,59 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+function isFixtureRequest(url) {
+  return url.includes('/fixtures.ics') ||
+    url.includes('calendar.google.com') ||
+    url.includes('r.jina.ai') ||
+    url.includes('api.codetabs.com');
+}
+
+function networkFirst(request) {
+  return fetch(request)
+    .then((response) => {
+      if (response.ok) {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+      }
+      return response;
+    })
+    .catch(() => caches.match(request));
+}
+
 self.addEventListener('fetch', (event) => {
   const { request } = event;
 
   if (request.method !== 'GET') return;
 
-  // Dynamic handling for proxy links or local layout files
-  if (request.url.includes('api.codetabs.com')) {
+  // Always prefer fresh fixture data, with cache as an offline fallback.
+  if (isFixtureRequest(request.url)) {
+    event.respondWith(networkFirst(request));
+    return;
+  }
+
+  // Navigations are network-first so app updates are picked up immediately.
+  if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
       .then((response) => {
-        if (response.ok) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-        }
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
         return response;
       })
-      .catch(() => caches.match(request))
+      .catch(() => caches.match(request).then((cached) => cached || caches.match('./index.html')))
     );
     return;
   }
 
   event.respondWith(
     caches.match(request)
-    .then((cached) => cached || fetch(request))
+    .then((cached) => cached || fetch(request).then((response) => {
+      if (response.ok) {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+      }
+      return response;
+    }))
   );
 });
 
