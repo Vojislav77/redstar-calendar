@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <meta name="theme-color" content="#c8102e">
   <meta name="description" content="FK Red Star Belgrade Match Calendar">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://corsproxy.io https://api.codetabs.com https://calendar.google.com; base-uri 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://calendar.google.com https://r.jina.ai https://api.codetabs.com; base-uri 'self'">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="logo.png">
   <link rel="icon" type="image/png" href="logo.png">
@@ -234,6 +234,8 @@
         <span data-i18n="footerText">Data: Google Calendar</span>
         <span class="footer-divider">•</span>
         <a href="https://www.crvenazvezdafk.com" target="_blank" rel="noopener">crvenazvezdafk.com</a>
+        <span class="footer-divider">•</span>
+        <span class="footer-version">v2.0.0</span>
       </p>
     </footer>
   </div>
@@ -247,14 +249,22 @@
     // ==================== CONFIG ====================
     const CONFIG = {
       icalUrl: 'https://calendar.google.com/calendar/ical/86u4qcsucb53sirc7p03nml9tpbelcvn%40import.calendar.google.com/public/basic.ics',
-      proxies: [
-        'https://corsproxy.io/?',
-        'https://api.codetabs.com/v1/proxy?quest='
-      ],
+      localUrl: './fixtures.ics',
       cacheTTL: 60 * 60 * 1000,
-      cacheKey: 'redstar_fixtures_cache'
+      cacheKey: 'redstar_fixtures_cache_v2'
     };
     const TIMEZONE = 'Europe/Belgrade';
+    const HOME_STADIUM = 'Stadion Rajko Mitić, Ljutice Bogdana 1a, Beograd';
+
+    const CYRILLIC_TO_LATIN = {
+      'А':'A','Б':'B','В':'V','Г':'G','Д':'D','Ђ':'Đ','Е':'E','Ж':'Ž','З':'Z','И':'I','Ј':'J','К':'K','Л':'L','Љ':'Lj','М':'M','Н':'N','Њ':'Nj','О':'O','П':'P','Р':'R','С':'S','Т':'T','Ћ':'Ć','У':'U','Ф':'F','Х':'H','Ц':'C','Ч':'Č','Џ':'Dž','Ш':'Š',
+      'а':'a','б':'b','в':'v','г':'g','д':'d','ђ':'đ','е':'e','ж':'ž','з':'z','и':'i','ј':'j','к':'k','л':'l','љ':'lj','м':'m','н':'n','њ':'nj','о':'o','п':'p','р':'r','с':'s','т':'t','ћ':'ć','у':'u','ф':'f','х':'h','ц':'c','ч':'č','џ':'dž','ш':'š',
+      'Ё':'Jo','ё':'jo','Є':'Je','є':'je','Ї':'Ji','ї':'ji','І':'I','і':'i','Ў':'U','ў':'u','Ъ':'','ъ':'','Ы':'Y','ы':'y','Ь':'','ь':'','Э':'E','э':'e','Ю':'Ju','ю':'ju','Я':'Ja','я':'ja','Й':'J','й':'j','Ѓ':'Ǵ','ѓ':'ǵ','Ќ':'Ḱ','ќ':'ḱ','Ѕ':'Dz','ѕ':'dz','ѐ':'e','ѝ':'i'
+    };
+
+    function toLatin(value) {
+      return (value || '').replace(/[\u0400-\u04FF]/g, ch => (ch in CYRILLIC_TO_LATIN ? CYRILLIC_TO_LATIN[ch] : ch));
+    }
 
     // ==================== TRANSLATIONS ====================
     const translations = {
@@ -306,7 +316,7 @@
     function applyLanguage(lang) {
       currentLang = translations[lang] ? lang : 'en';
       localStorage.setItem('rsb_lang', currentLang);
-      document.documentElement.lang = currentLang;
+      document.documentElement.lang = currentLang === 'sr' ? 'sr-Latn' : 'en';
       const label = document.getElementById('langLabel');
       if (label) label.textContent = currentLang === 'en' ? 'SR' : 'EN';
       document.querySelectorAll('[data-i18n]').forEach(el => {
@@ -424,7 +434,109 @@
       return new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: TIMEZONE }).format(date);
     }
 
-    // ✅ ROBUST MULTI-PROXY AUTOFETCH ENGINE
+    // ==================== FIXTURE HELPERS ====================
+    const ZVEZDA_PATTERN = /crvena\s*zvezda|red\s*star|\bzvezda\b/i;
+    const SCORE_SUFFIX = /\s*[:(]\s*\d+\s*[-–]\s*\d+\s*\)?\s*$/;
+
+    function extractIcsDocument(text) {
+      if (!text) return null;
+      const start = text.indexOf('BEGIN:VCALENDAR');
+      if (start === -1) return null;
+      const endMarker = 'END:VCALENDAR';
+      const end = text.lastIndexOf(endMarker);
+      return end === -1 ? text.slice(start) : text.slice(start, end + endMarker.length);
+    }
+
+    function cleanTeamName(name) {
+      return toLatin(name)
+        .replace(/\[[^\]]*\]/g, ' ')
+        .replace(/\([^)]*(?:crvena\s*zvezda|red\s*star)[^)]*\)/gi, ' ')
+        .replace(/\(\s*\d+\s*[-–]\s*\d+\s*\)/g, ' ')
+        .replace(/\(\s*\)/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .replace(/^FK\s+/i, '')
+        .replace(/\bFK\s+CRVENA\s+ZVEZDA\b/gi, '')
+        .replace(/\bCRVENA\s+ZVEZDA\b/gi, '')
+        .replace(/\bRED\s+STAR(\s+BELGRADE)?\b/gi, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    function detectCompetition(text) {
+      const t = (text || '').toLowerCase();
+      if (/champions\s*league|liga\s*šampiona/.test(t)) return 'UEFA Champions League';
+      if (/europa\s*league|liga\s*evrope/.test(t)) return 'UEFA Europa League';
+      if (/conference\s*league|konferencijska/.test(t)) return 'UEFA Conference League';
+      if (/super\s*liga|superliga/.test(t)) return 'Serbian SuperLiga';
+      if (/\bkup\b|\bcup\b|copa/.test(t)) return 'Serbian Cup';
+      if (/prijatelj|friendly/.test(t)) return 'Friendly';
+      return 'Other';
+    }
+
+    function parseFixture(raw) {
+      const summary = toLatin(raw.summary || '');
+      const brackets = [...summary.matchAll(/\[([^\]]+)\]/g)].map(m => m[1].trim());
+      const text = summary
+        .replace(/\[[^\]]*\]/g, ' ')
+        .replace(/\([^)]*(?:crvena\s*zvezda|red\s*star)[^)]*\)/gi, ' ')
+        .replace(SCORE_SUFFIX, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .replace(/^[^\p{L}\p{N}]+/u, '')
+        .trim();
+
+      let homeName = '', awayName = '';
+      const dashParts = text.split(/\s+[-–]\s+/);
+      if (dashParts.length >= 2) {
+        homeName = dashParts[0].trim();
+        awayName = dashParts.slice(1).join(' - ').trim();
+      } else {
+        const vsParts = text.split(/\s+(?:vs\.?|protiv)\s+/i);
+        if (vsParts.length >= 2) {
+          homeName = vsParts[0].trim();
+          awayName = vsParts.slice(1).join(' vs ').trim();
+        } else {
+          homeName = text;
+        }
+      }
+
+      const homeIsZvezda = ZVEZDA_PATTERN.test(homeName);
+      const awayIsZvezda = ZVEZDA_PATTERN.test(awayName);
+      const isHome = homeIsZvezda && !awayIsZvezda;
+
+      let opponent = isHome ? cleanTeamName(awayName) : cleanTeamName(homeName);
+      if (!opponent) opponent = cleanTeamName(awayName) || 'Unknown';
+
+      const competition = detectCompetition([...brackets, summary, raw.description || ''].join(' '));
+      return { homeTeam: cleanTeamName(homeName), awayTeam: cleanTeamName(awayName), opponent, isHome, competition };
+    }
+
+    function buildRemoteSources() {
+      return [
+        CONFIG.icalUrl,
+        'https://r.jina.ai/' + CONFIG.icalUrl,
+        'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(CONFIG.icalUrl)
+      ];
+    }
+
+    async function fetchIcsDocument() {
+      const sources = location.protocol === 'file:'
+        ? [...buildRemoteSources(), CONFIG.localUrl]
+        : [CONFIG.localUrl, ...buildRemoteSources()];
+
+      for (const url of sources) {
+        try {
+          const res = await fetch(url, { cache: 'no-store' });
+          if (!res.ok) continue;
+          const doc = extractIcsDocument(await res.text());
+          if (doc) return doc;
+        } catch (err) {}
+      }
+      return null;
+    }
+
+    // ==================== LOAD FIXTURES ====================
     async function loadCalendarEvents() {
       updateStatus('loading', '📅', translations[currentLang].loadingCalendar);
       showLoading(true);
@@ -438,21 +550,7 @@
         return;
       }
 
-      let icsText = null;
-      let fetchError = null;
-
-      for (const proxy of CONFIG.proxies) {
-        try {
-          const url = proxy + encodeURIComponent(CONFIG.icalUrl);
-          const res = await fetch(url);
-          if (res.ok) {
-            icsText = await res.text();
-            if (icsText && icsText.includes('BEGIN:VCALENDAR')) break;
-          }
-        } catch (err) {
-          fetchError = err;
-        }
-      }
+      const icsText = await fetchIcsDocument();
 
       if (!icsText) {
         updateStatus('error', '⚠️', '⚠️ Could not load fixtures');
@@ -476,31 +574,41 @@
 
       try {
         const allEvents = parseICS(icsText);
+        const seen = new Set();
 
         calendarEvents = allEvents
-          .filter(e => {
-            const s = (e.summary||'').toLowerCase();
-            return s.includes('crvena') || s.includes('zvezda') || s.includes('red star') || s.includes('belgrade');
-          })
+          .filter(e => ZVEZDA_PATTERN.test(toLatin(e.summary || '')))
           .map(e => {
-            const loc = (e.location||'').toLowerCase();
-            const isHome = loc.includes('rajko mitic') || loc.includes('marakana') || loc.includes('belgrade');
-            const opp = (e.summary||'').replace(/Crvena Zvezda|Red Star|FK/i,'').replace(/vs|protiv|@/i,'').trim() || 'Unknown';
-            let comp = 'Other';
-            const s = (e.summary||'').toLowerCase();
-            if (s.includes('superliga')) comp = 'Serbian SuperLiga';
-            else if (s.includes('champions')) comp = 'UEFA Champions League';
-            else if (s.includes('europa')) comp = 'UEFA Europa League';
-            else if (s.includes('kup') || s.includes('cup')) comp = 'Serbian Cup';
+            const fixture = parseFixture(e);
+            const rawVenue = toLatin(e.location || '').replace(/\s+/g, ' ').trim();
+            const isHomeVenue = /rajk[ao]\s*mit|marakana/i.test(rawVenue);
+            const venue = fixture.isHome
+              ? (rawVenue && !isHomeVenue ? rawVenue : HOME_STADIUM)
+              : (rawVenue || 'Away');
 
-            const venue = e.location || (isHome ? 'Rajko Mitić Stadium, Ljutice Bogdana 1a, 11000 Belgrade' : 'Away');
-
-            return { id: e.uid||Math.random().toString(36), title: e.summary, opponent: opp, competition: comp, venue, isHome, start: e.start, end: e.end||new Date(e.start.getTime()+2*60*60*1000), description: e.description||'' };
+            return {
+              id: e.uid || Math.random().toString(36),
+              title: toLatin(e.summary || ''),
+              opponent: fixture.opponent,
+              competition: fixture.competition,
+              venue,
+              isHome: fixture.isHome,
+              start: e.start,
+              end: e.end || new Date(e.start.getTime() + 2*60*60*1000),
+              description: toLatin(e.description || '')
+            };
           })
           .filter(e => e.start instanceof Date && !isNaN(e.start.getTime()))
-          .sort((a,b) => a.start - b.start);
+          .sort((a,b) => a.start - b.start)
+          .filter(e => {
+            const key = `${e.id}|${e.start.toISOString()}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
 
         if (calendarEvents.length === 0) {
+          updateStatus('warning', '📅', translations[currentLang].noMatches);
           document.getElementById('calendarEmpty').style.display = 'block';
         } else {
           setCachedData(calendarEvents);
@@ -605,7 +713,7 @@
 
     function formatDateTime(date) {
       if (!date || !(date instanceof Date) || isNaN(date.getTime())) return 'Invalid date';
-      return new Intl.DateTimeFormat('en-GB', {
+      return new Intl.DateTimeFormat(currentLang === 'sr' ? 'sr-Latn-RS' : 'en-GB', {
         weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
         hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: TIMEZONE
       }).format(date);
