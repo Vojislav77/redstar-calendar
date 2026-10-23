@@ -1,0 +1,43 @@
+name: Update fixtures
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-fixtures
+  cancel-in-progress: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Fetch latest calendar feed
+        env:
+          ICAL_URL: https://calendar.google.com/calendar/ical/86u4qcsucb53sirc7p03nml9tpbelcvn%40import.calendar.google.com/public/basic.ics
+        run: |
+          curl -fsSL --retry 3 --max-time 60 "$ICAL_URL" -o fixtures.ics.tmp
+          grep -q "BEGIN:VCALENDAR" fixtures.ics.tmp
+          grep -q "BEGIN:VEVENT" fixtures.ics.tmp
+          # DTSTAMP changes on every feed request; drop it so commits only happen when fixtures change.
+          grep -v '^DTSTAMP:' fixtures.ics.tmp | sed 's/\r$//' > fixtures.ics
+          rm fixtures.ics.tmp
+
+      - name: Commit updated fixtures
+        run: |
+          git add fixtures.ics
+          if git diff --cached --quiet -- fixtures.ics; then
+            echo "No fixture changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: update fixtures"
+          git push
